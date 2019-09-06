@@ -12,9 +12,10 @@ import (
 type Folder struct {
 	innerHandler
 
-	source  string
-	target  string
-	ignores map[string]bool
+	source   string
+	target   string
+	ignores  map[string]bool
+	patterns []string
 }
 
 func (s *Folder) ParseArg(key, value string) {
@@ -53,6 +54,15 @@ func (s *Folder) ParseArg(key, value string) {
 				s.ignores[item] = true
 			}
 		}
+	} else if key == "pattern" {
+		items := strings.Split(value, "|")
+		count := len(items)
+		for i := 0; i < count; i++ {
+			item := strings.ToLower(items[i])
+			if len(item) > 0 {
+				s.patterns = append(s.patterns, item)
+			}
+		}
 	}
 }
 
@@ -84,7 +94,7 @@ func (s *Folder) ShowHelp() {
 	s.ShowLine("    create", "create folder, <target=folder path>", labelWidth)
 	s.ShowLine("    delete", "delete folder, <target=folder path>", labelWidth)
 	s.ShowLine("    clear", "clear folder, <target=folder path> [ignore=node_modules|.git]", labelWidth)
-	s.ShowLine("    copy", "copy folder, <source=folder path> <target=folder path> [ignore=folder1|file1.txt|.git]", labelWidth)
+	s.ShowLine("    copy", "copy folder, <source=folder path> <target=folder path> [pattern=*.dll|*.exe] [ignore=folder1|file1.txt|.git]", labelWidth)
 }
 
 func (s *Folder) Create() error {
@@ -175,6 +185,10 @@ func (s *Folder) copy(src, dest string, info os.FileInfo) error {
 }
 
 func (s *Folder) copyFile(src, dest string, info os.FileInfo) error {
+	if !s.isMatched(info.Name()) {
+		return nil
+	}
+
 	destFile, err := os.Create(dest)
 	if err != nil {
 		return err
@@ -220,6 +234,52 @@ func (s *Folder) isIgnored(name string) bool {
 		_, ok := s.ignores[strings.ToLower(name)]
 		if ok {
 			return true
+		}
+	}
+
+	return false
+}
+
+func (s *Folder) isMatched(name string) bool {
+	count := len(s.patterns)
+	if count < 1 {
+		return true
+	}
+
+	for index := 0; index < count; index++ {
+		item := s.patterns[index]
+		itemLength := len(item)
+		if itemLength < 1 {
+			continue
+		}
+		asteriskCount := strings.Count(item, "*")
+		if asteriskCount == itemLength {
+			return true
+		}
+
+		if asteriskCount == 0 {
+			if item == name {
+				return true
+			}
+		} else if asteriskCount == 1 {
+			index := strings.Index(item, "*")
+			if index == 0 {
+				suffix := item[1:]
+				if strings.HasSuffix(name, suffix) {
+					return true
+				}
+			} else if index == itemLength-1 {
+				prefix := item[0:index]
+				if strings.HasPrefix(name, prefix) {
+					return true
+				}
+			} else {
+				prefix := item[0:index]
+				suffix := item[index+1:]
+				if strings.HasPrefix(name, prefix) && strings.HasSuffix(name, suffix) {
+					return true
+				}
+			}
 		}
 	}
 

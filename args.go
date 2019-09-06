@@ -75,6 +75,7 @@ func (s *Args) Handle() error {
 	labelWidth := 12
 	s.ShowLine("    help", "show the command list", labelWidth)
 	s.ShowLine("    folder", "create, delete, clear, copy folder", labelWidth)
+	s.ShowLine("    file", "delete, copy file", labelWidth)
 
 	if s.help {
 		return nil
@@ -90,7 +91,9 @@ func (s *Args) generateHandler(folder, name string) Handler {
 	}
 
 	if name == "folder" {
-		return &Folder{innerHandler: innerHandler{folder: folder}, ignores: make(map[string]bool)}
+		return &Folder{innerHandler: innerHandler{folder: folder}, ignores: make(map[string]bool), patterns: make([]string, 0)}
+	} else if name == "file" {
+		return &File{innerHandler: innerHandler{folder: folder}}
 	}
 
 	return s
