@@ -10,13 +10,16 @@ import (
 type File struct {
 	innerHandler
 
-	source string
-	target string
+	source  string
+	target  string
+	content string
 }
 
 func (s *File) ParseArg(key, value string) {
 	if key == "help" {
 		s.help = true
+	} else if key == "create" {
+		s.command = "create"
 	} else if key == "delete" {
 		s.command = "delete"
 	} else if key == "copy" {
@@ -37,6 +40,8 @@ func (s *File) ParseArg(key, value string) {
 				s.target = value
 			}
 		}
+	} else if key == "content" {
+		s.content = value
 	}
 }
 
@@ -46,7 +51,9 @@ func (s *File) Handle() error {
 		return nil
 	}
 
-	if s.command == "delete" {
+	if s.command == "create" {
+		return s.Create()
+	} else if s.command == "delete" {
 		return s.Delete()
 	} else if s.command == "copy" {
 		return s.Copy()
@@ -61,8 +68,37 @@ func (s *File) ShowHelp() {
 	s.ShowLine("The command are:", "", 0)
 	labelWidth := 12
 	s.ShowLine("    help", "show the command list", labelWidth)
-	s.ShowLine("    delete", "delete folder, <target=file path>", labelWidth)
-	s.ShowLine("    copy", "copy folder, <source=file path> <target=file path>", labelWidth)
+	s.ShowLine("    create", "create file, <target=file path> [content=string value]", labelWidth)
+	s.ShowLine("    delete", "delete file, <target=file path>", labelWidth)
+	s.ShowLine("    copy", "copy file, <source=file path> <target=file path>", labelWidth)
+}
+
+func (s *File) Create() error {
+	if len(s.target) < 1 {
+		return fmt.Errorf("invalid arguments: target is empty")
+	}
+
+	filePath := s.target
+	fileFolder := filepath.Dir(filePath)
+	_, err := os.Stat(fileFolder)
+	if os.IsNotExist(err) {
+		os.MkdirAll(fileFolder, 0777)
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if len(s.content) > 0 {
+		_, err = fmt.Fprint(file, s.content)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *File) Delete() error {
