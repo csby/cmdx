@@ -10,6 +10,7 @@ type Args struct {
 	innerHandler
 
 	handler Handler
+	version bool
 }
 
 func (s *Args) Parse(args []string) {
@@ -68,11 +69,17 @@ func (s *Args) ParseArg(key, value string) {
 }
 
 func (s *Args) Handle() error {
+	if s.version {
+		fmt.Println(moduleVersion)
+		return nil
+	}
+
 	s.ShowLine("cmdx is a tool for command line extension.", "", 0)
 	s.ShowLine("Usage:", "", 0)
 	s.ShowLine("    cmdx <command> [arguments]", "", 0)
 	s.ShowLine("The command are:", "", 0)
 	labelWidth := 12
+	s.ShowLine("    version", "show the current version", labelWidth)
 	s.ShowLine("    help", "show the command list", labelWidth)
 	s.ShowLine("    folder", "create, delete, clear, copy folder", labelWidth)
 	s.ShowLine("    file", "delete, copy file", labelWidth)
@@ -87,6 +94,9 @@ func (s *Args) Handle() error {
 func (s *Args) generateHandler(folder, name string) Handler {
 	if name == "h" || name == "help" {
 		s.help = true
+		return s
+	} else if name == "version" || name == "-version" || name == "-v" {
+		s.version = true
 		return s
 	}
 
